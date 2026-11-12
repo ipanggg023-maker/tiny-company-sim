@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>บริษัทจิ๋ว</title>
+<meta name="description" content="เกมบริหารบริษัทเล็กๆ ที่พนักงานมีนิสัยและเรื่องราวของตัวเอง">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#222;--mute:#777;--line:#e2ded4;--acc:#2f6f5e;--acc-ink:#fff;--bad:#b3392f;--good:#2f7d46;--warn:#c48a1c;--story:#7a4fb0;--gold:#e0a030}
+@media (prefers-color-scheme:dark){:root{--bg:#16171a;--card:#22252a;--ink:#ecebe6;--mute:#9a9a92;--line:#363a40;--acc:#6dbfa5;--acc-ink:#10201b;--bad:#e5766c;--good:#74c78b;--warn:#e0b04f;--story:#b796e6;--gold:#f2c14e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,"Noto Sans Thai","Leelawadee UI",sans-serif}
+main{max-width:1240px;margin:0 auto;padding:12px 16px 24px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px;position:sticky;top:8px;z-index:5;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+header h1{font-size:18px;margin:0 8px 0 0;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat b{font-variant-numeric:tabular-nums;display:inline-block;transition:transform .15s}
+.stat b.bump-up{color:var(--good);transform:scale(1.18)}
+.stat b.bump-down{color:var(--bad);transform:scale(1.18)}
+.ctrl{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.layout{display:grid;grid-template-columns:1fr 360px;gap:12px;align-items:start}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{border-radius:8px}
+.tabs button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+#view{animation:fadein .25s ease}
+#view.swap{animation:none}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.dept-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:8px}
+.dept-h h2{font-size:17px;margin:0}
+.emps{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.emp{border:1px solid var(--line);border-radius:10px;padding:8px 10px;transition:transform .15s,box-shadow .15s}
+.emp:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.08)}
+.emp.rest{opacity:.8;border-style:dashed}
+.emp h3{margin:0;font-size:15px;display:flex;justify-content:space-between;gap:6px}
+.tags span{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:99px;padding:0 8px;margin:2px 4px 2px 0;color:var(--mute);cursor:help}
+.meter{height:7px;background:var(--line);border-radius:4px;overflow:hidden;margin:4px 0}
+.meter i{display:block;height:100%;transition:width .4s ease}
+.small{font-size:12.5px;color:var(--mute)}
+.rels{font-size:12.5px;margin-top:2px}
+button,select,input{font:inherit;font-size:13.5px;padding:3px 9px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink)}
+button,select{cursor:pointer;transition:transform .08s,border-color .15s,background .15s}
+button:hover:not(:disabled){border-color:var(--acc)}
+button:active:not(:disabled){transform:scale(.94)}
+button.p{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+button:disabled{opacity:.4;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;align-items:center}
+.offer{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between}
+.prog{flex:1 1 100%}
+#log{max-height:calc(100vh - 140px);overflow-y:auto;overflow-x:hidden;font-size:13.5px}
+#log p{margin:0;padding:4px 0;border-bottom:1px dashed var(--line)}
+#log p.new{animation:slidein .35s ease}
+@keyframes slidein{from{opacity:0;transform:translateX(14px);background:rgba(109,191,165,.18)}to{opacity:1;transform:none}}
+#log .d{color:var(--mute);font-variant-numeric:tabular-nums;margin-right:6px}
+.g{color:var(--good)}.b{color:var(--bad)}.m{color:var(--mute)}.story{color:var(--story);font-weight:600}.sys{font-weight:600}
+.filters{display:flex;gap:4px;margin:6px 0}
+.filters button.on{border-color:var(--acc);color:var(--acc)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:20;backdrop-filter:blur(3px)}
+#modal .card{max-width:440px;width:100%;animation:pop .28s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+#modal h2{margin:0 0 6px;font-size:18px}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:6px 14px;border-radius:8px;display:none;z-index:30}
+.warn{color:var(--bad);font-weight:600}
+.empty{color:var(--mute);padding:6px 0}
+
+/* 3D office */
+#office3d{position:relative;height:clamp(280px,52vh,560px);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px;background:#bcd9ea}
+#office3d canvas{display:block;cursor:grab}
+#office3d.hidden{display:none}
+#office3d:not(.ready)::after{content:"กำลังโหลดออฟฟิศ 3D…";position:absolute;inset:0;display:grid;place-items:center;color:#334}
+#office3d.shake{animation:shake .35s}
+#office3d.shake-big{animation:shake .6s}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-4px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-2px)}}
+.o3d-labels{position:absolute;inset:0;pointer-events:none}
+.o3d-name{font-size:11px;background:rgba(0,0,0,.55);color:#fff;padding:0 6px;border-radius:6px;white-space:nowrap}
+.o3d-room{font-size:12px;font-weight:700;background:rgba(255,255,255,.88);color:#222;padding:1px 9px;border-radius:7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.o3d-bubble{font-size:22px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
+.o3d-coin{font-weight:800;font-size:16px;color:#ffd166;text-shadow:0 2px 0 #7a5200,0 0 10px rgba(255,209,102,.7);white-space:nowrap}
+.o3d-coin.big{font-size:26px}
+.o3d-coin.bad{color:#ff7a7a;text-shadow:0 2px 0 #5a1010}
+.o3d-clock{position:absolute;left:10px;top:8px;font-size:13px;font-weight:700;background:rgba(0,0,0,.45);color:#fff;padding:2px 10px;border-radius:99px;pointer-events:none}
+.o3d-hint{position:absolute;right:8px;bottom:6px;font-size:11px;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none;opacity:.8}
+.emp.flash{outline:2px solid var(--acc);outline-offset:2px}
+
+/* title screen */
+#title{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at top,rgba(30,60,80,.55),rgba(10,14,24,.88));backdrop-filter:blur(4px);transition:opacity .5s}
+#title.out{opacity:0;pointer-events:none}
+#title .box{max-width:460px;width:100%;text-align:center;color:#fff}
+#title .logo{font-size:64px;animation:bob 2.4s ease-in-out infinite;display:inline-block}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-10px) rotate(3deg)}}
+#title h1{font-size:44px;margin:4px 0 0;letter-spacing:1px;background:linear-gradient(90deg,#ffd166,#06d6a0,#4cc9f0,#ffd166);background-size:300%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 6s linear infinite}
+@keyframes shine{to{background-position:300%}}
+#title .sub{opacity:.85;margin:0 0 18px}
+#title input{width:100%;font-size:17px;padding:10px 14px;border-radius:10px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;text-align:center;margin-bottom:10px}
+#title input::placeholder{color:rgba(255,255,255,.5)}
+#title .btns{display:flex;flex-direction:column;gap:8px}
+#title .btns button{font-size:17px;padding:10px;border-radius:10px;border:0;font-weight:700}
+#title .go{background:linear-gradient(90deg,#06d6a0,#4cc9f0);color:#0b1b22}
+#title .cont{background:rgba(255,255,255,.15);color:#fff}
+#title ul{text-align:left;font-size:13.5px;opacity:.85;padding-left:20px;margin:16px 0 0}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="company">🏢 บริษัทจิ๋ว</h1>
+    <span class="stat">วันที่ <b id="day"></b></span>
+    <span class="stat">เงิน <b id="money"></b> ฿</span>
+    <span class="stat">วันนี้ <b id="net"></b></span>
+    <span class="stat">ชื่อเสียง <b id="rep"></b></span>
+    <span class="stat">พนักงาน <b id="cnt"></b></span>
+    <span id="neg" class="warn"></span>
+    <div class="ctrl">
+      <button id="play" class="p">▶ เริ่ม</button>
+      <button id="step">+1 วัน</button>
+      <select id="speed" title="ความเร็ว"><option value="1500">ช้า</option><option value="700" selected>ปกติ</option><option value="250">เร็ว</option></select>
+      <button id="toggle3d" title="แสดง/ซ่อนออฟฟิศ 3D">🧊 3D</button>
+      <button id="mute" title="เสียง">🔊</button>
+      <button id="reset">เมนู</button>
+    </div>
+  </header>
+  <div class="layout">
+    <section>
+      <div id="office3d"><span class="o3d-hint">ลากเพื่อหมุน · เลื่อนเพื่อซูม · คลิกพนักงาน</span></div>
+      <nav class="tabs" id="tabs">
+        <button data-tab="depts" class="on">🏢 แผนก</button>
+        <button data-tab="jobs">📋 งาน</button>
+        <button data-tab="hire">🧑‍💼 จ้างงาน</button>
+        <button data-tab="grow">🏗️ ขยายบริษัท</button>
+      </nav>
+      <div id="view"></div>
+    </section>
+    <aside class="card">
+      <b>📖 บันทึกบริษัท</b>
+      <div class="filters" id="filters">
+        <button data-f="all" class="on">ทั้งหมด</button>
+        <button data-f="story">เรื่องราว</button>
+        <button data-f="money">เงิน/งาน</button>
+      </div>
+      <div id="log"></div>
+    </aside>
+  </div>
+</main>
+<div id="title">
+  <div class="box">
+    <div class="logo">🏢</div>
+    <h1>บริษัทจิ๋ว</h1>
+    <p class="sub">สร้างบริษัทเล็กๆ ให้เติบโต — ทุกพนักงานมีนิสัยและเรื่องราวของตัวเอง</p>
+    <input id="cname" maxlength="30" placeholder="ตั้งชื่อบริษัทของคุณ">
+    <div class="btns">
+      <button class="cont" id="continue" style="display:none">▶ เล่นต่อ</button>
+      <button class="go" id="newgame">✨ เปิดบริษัทใหม่</button>
+    </div>
+    <ul>
+      <li>รับงานจากลูกค้า ส่งให้ทันเดดไลน์ เก็บเงินและชื่อเสียง</li>
+      <li>ดูแลอารมณ์พนักงาน — เพื่อนสนิทช่วยกัน คู่กัดทำงานพัง</li>
+      <li>เปิดแผนกใหม่ ขยายออฟฟิศ และอย่าให้เงินติดลบ 7 วัน!</li>
+    </ul>
+  </div>
+</div>
+<div id="modal"><div class="card" id="modal-body"></div></div>
+<div id="toast"></div>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script src="game.js"></script>
+<script src="sfx.js"></script>
+<script src="ui.js"></script>
+<script type="module" src="office3d.js"></script>
+</body>
+</html>
