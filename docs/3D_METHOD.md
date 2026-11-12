@@ -27,6 +27,18 @@ Reusable recipe for adding an isometric 3D view with code-built characters to a 
 - Front faces +Z. Facing a direction: `rotation.y = atan2(dx, dz)`. Sitting: legs `rotation.x = -π/2`.
 - Poses are just target joint angles, lerped each frame (`k = min(1, dt*10)`): walk (sin swing), type, slack, sleep, sofa, angry (shake), cheer.
 
+## Chibi (Kairosoft) proportions
+- LEG 0.3, TORSO 0.4, HEAD 0.62 (head ≈ legs + torso). Export `TOP_Y` and hip heights from `characters.js` and place labels, bubbles and the gem relative to `TOP_Y`, never with hard-coded heights.
+- Reuse the old face/hair modelling by putting it in a `face` group scaled by `HEAD / 0.42`. Big eyes with a white highlight, plus blush.
+- Bouncy walk (hip bob and head tilt). Seated hip = chair top (0.5); short legs dangling is fine and looks cute.
+- Kairosoft feel = constant little numbers: on each new game day, pop "+N" over every worker and "+฿" over every building.
+
+## Town / multi-area scenes
+- Put extra areas in the same world along the street, not behind the camera-facing walls (the camera looks from +x/+z, so fronts must face +z).
+- Register every area (rooms, plots) in one `rooms` map with an `aisleX`, so the same waypoint router can send people between them via the street corridor.
+- View toggle: lerp `controls.target` and the camera by the same delta, and lerp zoom only while a view change is animating, so user zoom isn't fought.
+- Rebuild signature = everything that changes layout or props (dept levels, research keys, subs, trophies). Snap people into place only on the first build.
+
 ## Movement
 - No navmesh: waypoint routing through known aisles/corridor (`own aisle → corridor → target aisle → seat`). Speed ~2.6 u/s.
 - New entity spawns at the entrance and walks in; removed entity walks out, then is deleted.

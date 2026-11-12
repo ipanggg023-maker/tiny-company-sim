@@ -1,49 +1,37 @@
-# บริษัทจิ๋ว — Company Tycoon Sim
+# บริษัทจิ๋ว — Company Tycoon Sim (Kairosoft-style)
 
 ## Decisions
-- Tycoon: small company grows into multiple departments (สาย) under one parent company.
+- Tycoon: small company grows into departments, then subsidiaries (บริษัทลูก) in a town. Target feel: **Kairosoft** (Game Dev Story, Mega Mall Story).
 - Browser, plain HTML/JS, no build step. Solo hobby project. UI/text in Thai.
-- Hook: emergent stories from employee personalities + relationships.
-- Text + UI only. Endless; bankruptcy = game over.
+- Hook: emergent stories from employee personalities and relationships, plus Kairosoft loops (combos, research, levels, yearly awards).
+- 2.5D isometric Three.js view with chibi low-poly characters. Endless; bankruptcy = game over.
 
 ## Files
-- `index.html` (layout/CSS) · `ui.js` (rendering, input, localStorage autosave) · `game.js` (pure logic, no DOM, works in Node).
-- `tools/balance-sim.js` — headless bot playtest: `node tools/balance-sim.js 300 365 smart|idle`.
-- Run: `py -m http.server 8123 --directory D:\simulator` → http://localhost:8123 (file:// may not open in the app's browser pane).
-- `office3d.js` + `characters.js` — 2.5D isometric office (Three.js 0.170 via CDN). Method: `docs/3D_METHOD.md`.
-- `prototype.html` = old v0, can be deleted.
+- `game.js`: pure logic (no DOM, runs in Node). `ui.js`: panels and tabs, autosave. `index.html`: layout and CSS. `sfx.js`: synth sounds.
+- `office3d.js` + `characters.js`: 3D office, town and chibi people. Method: `docs/3D_METHOD.md`.
+- `tools/balance-sim.js`: bot playtest, `node tools/balance-sim.js 300 365 smart|idle`.
+- Run locally: `py -m http.server 8123 --directory D:\simulator` → http://localhost:8123
 
 ## Live
-- Repo: github.com/ipanggg023-maker/tiny-company-sim (public). Play: https://ipanggg023-maker.github.io/tiny-company-sim/
-- GitHub Pages serves `main` root. Deploy = commit + `git push`; the site rebuilds in ~1 min.
+- Repo github.com/ipanggg023-maker/tiny-company-sim (public). Play: https://ipanggg023-maker.github.io/tiny-company-sim/
+- GitHub Pages from `main` root. Deploy = commit + push (ask the user first).
 
-## "x100 cooler" pass (2026-11-12)
-- Title screen (company name, continue/new), header shows the company name, money bump animation, fades/pop-ins, sliding log entries.
-- `sfx.js`: Web Audio synth sounds mapped from log emoji + UI clicks; mute toggle (saved).
-- 3D: day/night cycle (150 s), bloom glow (lamps, street lights), room lights at night, checker floors, whiteboard/shelf/posters/rug, outdoor street, trees, lamps.
-- Life director: coffee runs, friends walk over to chat, rivals glare, low-mood naps, stretches.
-- Juice: confetti + "+฿" pops on delivered jobs/deposits, screen shake on fights/failures.
+## Systems
+- **Employees**: 2 traits, mood, skill. **Level/XP** from work (xpNeed = 30+15·lvl, +0.3 skill per level). Skill is capped by **job tier** (caps 3/5/7/8.5/10); at the cap, pay to **promote** (1k/3k/8k/20k) to the next class (5 class names per department). Salary review every 30 days.
+- **Relationships**: per-pair chemistry + traits → friends (≥50) and rivals (≤−50); quits cascade.
+- **Contracts**: 30% deposit; client category × job title = **combo** (🌟 ×1.5 pay, 👍 ×1.2), discovered into the **combo book** on delivery.
+- **Research** (💡 = 0.5 + 0.05·daily output, + 0.4% of subsidiary profit): 15 items. Perks, premium jobs per department, and `holding`, which unlocks subsidiaries. Unlocks appear as furniture in 3D.
+- **Subsidiaries**: 7 types (café → fintech), max 6 plots, levels 1–5 (upgrade = cost × level). Profit = base × (1+0.45·(lvl−1)) × CEO factor (0.5 with no CEO, 0.7+0.06·skill with one) × (1+synergy). 8 business **pair combos**. The CEO is a promoted employee who leaves the office.
+- **Calendar**: 10-day months, 120-day years. Songkran and Loy Krathong events. **Rivals** (4) earn by fixed daily curves. **Year-end awards**: prize by rank, Employee of the Year, report popup.
+- Bankruptcy: money <0 for 7 days, or debt > max(5000, 3 days of costs).
+- Save key `company-sim-save-v1` with `SAVE_VERSION` 2; `migrate()` upgrades v1 saves.
 
-## 2.5D view (added 2026-11-12)
-- One room per department (desks = capacity, sofa, coffee machine, plant). Employees are procedural low-poly people, look seeded by id, accessories from traits, mood gem above head.
-- Working → typing at desk; rest → sofa; low mood → slumped; log events → emoji bubbles + poses (fight, sleep, cheer). Hire walks in, quit walks out.
-- Click a character → jumps to their card. 🧊 3D button hides the view (remembered).
+## Balance (bot, 300 runs × 365 days, 2026-11-12)
+- Smart bot: 4% bankrupt. Year-1 rank median 2 (#1 in 29% of runs), year 2 #1 in 71%, year 3 #1 in 89%. All research by ~day 240, 6 subsidiaries by day 240.
+- Idle bot: 34% bankrupt, always rank 5.
+- Rival curve (revenue/day per strength 1.0): yr1 5,400 · yr2 27,000 · yr3+ 42,000×1.08^(y−3). Strengths 0.3/0.5/0.75/1.0, growing 0–12% per year.
+- Known: late money still snowballs (millions by year 3). Possible sinks: more sub levels, town expansions, a hall of fame.
 
-## Systems (v1, built 2026-11-12)
-- Employees: 2 traits (10 kinds, conflicting pairs excluded), mood 0-100, skill 1-10 (grows while working), salary = 25+12·skill+1.5·skill² with auto review every 30 days.
-- Relationships: pair value −100..100, daily drift = noise + fixed per-pair chemistry (from ids) + trait mods, pulled toward 0. ≥50 friends (mood+, synergy), ≤−50 rivals (mood−, slowdowns). Friend quits → others sad, may follow.
-- Contracts: offers per dept (≤3), 30% deposit on accept, rest on delivery; miss deadline → lose rep ×2. Leftover capacity earns odd-job income.
-- Departments: dev (start), design (rep 12, 3k), marketing (rep 25, 5k), data (rep 45, 8k). Levels 1-3: capacity 2+2L, contracts 1+L, rent 20+35L².
-- Decision popups (pause game): raise request, rival feud, poaching, rush job, party.
-- Rep capped 0-100, diminishing gains. Bankrupt: money <0 for 7 days or < −5000.
-- Save key `company-sim-save-v1`; bump `SAVE_VERSION` in game.js when state shape changes.
-
-## Balance (bot, 300 runs × 365 days)
-- Smart bot: ~11% bankrupt; rep ~94 by day 90; 4 depts and 32 staff by day 180.
-- Idle bot (accepts jobs only): ~76% bankrupt.
-- Known issue: late-game money balloons (~300k by day 180, ~900k by day 365) and there is nothing to spend it on.
-
-## Next
-1. Human playtest: are stories memorable? Are decisions meaningful?
-2. Late-game money sink + goal: subsidiaries (บริษัทลูก) spun off from departments, each with a manager employee.
-3. Ideas: training, employee aging/life events, rival companies competing for clients, more decision events.
+## Next ideas
+- Human playtest of the new loops (is the combo book fun? promotions too frequent?).
+- More Kairosoft flavour: a visiting mascot event, staff "special moves", a 20-year ending / hall of fame score.

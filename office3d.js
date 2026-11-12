@@ -7,7 +7,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { makeCharacter, setMood, animate } from './characters.js';
+import { makeCharacter, setMood, animate, TOP_Y } from './characters.js';
 
 const host = document.getElementById('office3d');
 const G = window.Game;
@@ -17,6 +17,7 @@ const DEPT_COLORS = {
 };
 const SPEED = 2.6, DAY_LENGTH = 150; // seconds per visual day/night cycle
 const state = () => window.GameUI?.state;
+const has = (S, id) => !!(S && S.research && S.research[id]);
 
 // ---------- renderer / camera / post ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -85,13 +86,15 @@ function checkerTex(a, b, rx, ry) {
   t.magFilter = THREE.NearestFilter;
   return t;
 }
-function makeDesk() {
+function makeDesk(dual) {
   const g = new THREE.Group();
   box(1.4, 0.06, 0.7, 0xb08457, 0, 0.75, 0, g);
   for (const [x, z] of [[-0.62, -0.28], [0.62, -0.28], [-0.62, 0.28], [0.62, 0.28]]) box(0.06, 0.75, 0.06, 0x6e5238, x, 0.375, z, g);
-  box(0.6, 0.38, 0.05, 0x222428, 0, 1.05, -0.18, g);
   const screenMat = new THREE.MeshBasicMaterial({ color: 0x1c2733 });
-  box(0.54, 0.32, 0.01, screenMat, 0, 1.05, -0.152, g, false);
+  for (const sx of dual ? [-0.3, 0.3] : [0]) { // research "จอคู่" adds a second monitor
+    box(0.6, 0.38, 0.05, 0x222428, sx, 1.05, -0.18, g);
+    box(0.54, 0.32, 0.01, screenMat, sx, 1.05, -0.152, g, false);
+  }
   box(0.08, 0.14, 0.08, 0x222428, 0, 0.83, -0.2, g);
   box(0.4, 0.02, 0.14, 0x3a3d42, 0, 0.79, 0.08, g);
   box(0.12, 0.12, 0.12, [0xe0574c, 0x4f86c6, 0xe0b443, 0x5aa36b][Math.floor(Math.random() * 4)], 0.5, 0.84, -0.1, g); // mug/toy
@@ -144,6 +147,75 @@ function makeTree(s) {
   const c2 = new THREE.Mesh(new THREE.ConeGeometry(0.65 * s, 1.2 * s, 6), M(0x4f9e58)); c2.position.y = 2.3 * s; c2.castShadow = true; g.add(c2);
   return g;
 }
+function makeArcade() {
+  const g = new THREE.Group();
+  box(0.7, 1.5, 0.6, 0x6c4cc4, 0, 0.75, 0, g);
+  box(0.5, 0.4, 0.05, glow(0x4cf0c9, 1.2, 3), 0, 1.15, 0.31, g, false);
+  box(0.6, 0.12, 0.3, 0x2b2b3a, 0, 0.8, 0.4, g);
+  box(0.06, 0.12, 0.06, 0xff5e5e, -0.12, 0.92, 0.42, g);
+  return g;
+}
+function makeRobot() {
+  const g = new THREE.Group();
+  box(0.36, 0.4, 0.3, 0xcfd8e3, 0, 0.35, 0, g);
+  box(0.3, 0.26, 0.26, 0xe6ecf2, 0, 0.7, 0, g);
+  box(0.2, 0.06, 0.02, glow(0x4cc9f0, 1.4, 3), 0, 0.72, 0.14, g, false);
+  box(0.03, 0.18, 0.03, 0x555555, 0, 0.92, 0, g);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), glow(0xff5e5e, 1.5, 3.5)); tip.position.y = 1.03; g.add(tip);
+  box(0.14, 0.12, 0.14, 0x8a93a0, -0.1, 0.08, 0, g); box(0.14, 0.12, 0.14, 0x8a93a0, 0.1, 0.08, 0, g);
+  g.userData.bob = true;
+  return g;
+}
+function makeTrophies(n) {
+  const g = new THREE.Group();
+  box(1.4, 0.06, 0.25, 0x8a6a48, 0, 1.0, 0, g);
+  for (let i = 0; i < Math.min(n, 5); i++) {
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.04, 0.16, 8), glow(0xf2c14e, 1.1, 1.6));
+    cup.position.set(-0.5 + i * 0.25, 1.13, 0); g.add(cup);
+    box(0.1, 0.04, 0.1, 0x6e5238, -0.5 + i * 0.25, 1.05, 0, g);
+  }
+  return g;
+}
+// Subsidiary buildings: colour, roof colour, and a little roof prop per business type.
+const SUB_LOOK = {
+  cafe: [0xc98b5a, 0x8a4b2a], bakery: [0xf2d1a0, 0xd9694c], arcade: [0x6c4cc4, 0x2b2b3a], gym: [0x5c6b7a, 0xe0b443],
+  hostel: [0x7fb3a8, 0x3d6b62], studio: [0x3a3d42, 0xd95c8a], fintech: [0x4f86c6, 0x1f3b5c],
+};
+function roofProp(type, g, y) {
+  const P = (geo, c, x, yy, z) => { const m = new THREE.Mesh(geo, typeof c === 'number' ? M(c) : c); m.position.set(x, yy, z); m.castShadow = true; g.add(m); return m; };
+  switch (type) {
+    case 'cafe': P(new THREE.CylinderGeometry(0.45, 0.35, 0.7, 10), 0xf4f1ea, 0, y + 0.35, 0); P(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 10), 0x5a3a22, 0, y + 0.71, 0); break;
+    case 'bakery': { const m = P(new THREE.TorusGeometry(0.4, 0.17, 6, 10, Math.PI * 1.3), 0xe0a050, 0, y + 0.3, 0); m.rotation.x = -Math.PI / 2; break; }
+    case 'arcade': P(new THREE.BoxGeometry(0.9, 0.2, 0.6), 0x2b2b3a, 0, y + 0.1, 0); P(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 6), 0x222222, -0.2, y + 0.45, 0); P(new THREE.SphereGeometry(0.12, 8, 6), glow(0xff5e5e, 1.3, 3), -0.2, y + 0.72, 0); P(new THREE.SphereGeometry(0.08, 8, 6), glow(0x4cc9f0, 1.3, 3), 0.25, y + 0.25, 0); break;
+    case 'gym': { const bar = P(new THREE.CylinderGeometry(0.05, 0.05, 1.4, 6), 0x888888, 0, y + 0.3, 0); bar.rotation.z = Math.PI / 2; for (const x of [-0.6, 0.6]) { const w = P(new THREE.CylinderGeometry(0.28, 0.28, 0.16, 10), 0x222222, x, y + 0.3, 0); w.rotation.z = Math.PI / 2; } break; }
+    case 'hostel': P(new THREE.BoxGeometry(0.9, 0.5, 0.1), glow(0xffe6a8, 1, 2.5), 0, y + 0.3, 0); break;
+    case 'studio': P(new THREE.BoxGeometry(0.7, 0.45, 0.45), 0x222222, 0, y + 0.25, 0); { const l = P(new THREE.CylinderGeometry(0.15, 0.18, 0.3, 10), 0x111111, 0, y + 0.25, 0.35); l.rotation.x = Math.PI / 2; } P(new THREE.SphereGeometry(0.06, 6, 4), glow(0xff3b3b, 1.5, 3.5), 0.25, y + 0.52, 0); break;
+    case 'fintech': { const c = P(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16), glow(0xf2c14e, 1.1, 1.8), 0, y + 0.6, 0); c.rotation.x = Math.PI / 2; c.userData.spin = true; break; }
+  }
+}
+function makeBuilding(type, level) {
+  const g = new THREE.Group(), [wall, roof] = SUB_LOOK[type] || [0xcccccc, 0x888888];
+  const W = 4.2, D = 3.4, FH = 1.15;
+  for (let f = 0; f < level; f++) {
+    box(W, FH, D, wall, 0, f * FH + FH / 2, 0, g);
+    for (const wx of [-1.2, 0, 1.2]) if (f > 0 || wx !== 0) box(0.7, 0.5, 0.05, glow(0xbfe3f5, 0.9, 2.6), wx, f * FH + 0.62, D / 2 + 0.02, g, false);
+    box(0.05, 0.5, 0.7, glow(0xbfe3f5, 0.9, 2.6), W / 2 + 0.02, f * FH + 0.62, 0, g, false);
+    box(W + 0.1, 0.06, D + 0.1, roof, 0, (f + 1) * FH, 0, g); // floor trim
+  }
+  const top = level * FH;
+  box(W + 0.3, 0.18, D + 0.3, roof, 0, top + 0.09, 0, g);
+  box(0.9, 0.85, 0.06, 0x3a2a1e, 0, 0.43, D / 2 + 0.02, g, false); // door
+  for (let i = 0; i < 6; i++) box(0.7, 0.06, 0.6, i % 2 ? 0xffffff : roof, -1.75 + i * 0.7, 1.0, D / 2 + 0.3, g, false); // awning stripes
+  roofProp(type, g, top + 0.18);
+  return { g, top };
+}
+function makeForSale() {
+  const g = new THREE.Group();
+  box(0.08, 1.0, 0.08, 0x6e5238, 0, 0.5, 0, g);
+  box(0.9, 0.5, 0.05, 0xfafafa, 0, 1.0, 0.02, g);
+  box(0.7, 0.08, 0.06, 0xd9694c, 0, 1.08, 0.03, g);
+  return g;
+}
 function makeStreetLamp() {
   const g = new THREE.Group();
   box(0.1, 2.6, 0.1, 0x3a3d42, 0, 1.3, 0, g);
@@ -171,8 +243,8 @@ ground.rotation.x = -Math.PI / 2; ground.position.y = -0.21; ground.receiveShado
 
 function seededRand(seed) { let x = seed; return () => { x = (x * 16807) % 2147483647; return (x - 1) / 2147483646; }; }
 
-function buildRooms(S) {
-  for (const ch of [...world.children]) drop(ch); rooms = new Map(); roomLights.length = 0; glowMats.length = 0; windows.length = 0;
+function buildRooms(S, first) {
+  for (const ch of [...world.children]) drop(ch); rooms = new Map(); roomLights.length = 0; glowMats.length = 0; windows.length = 0; bobbers.length = 0; spinners.length = 0;
   let x = 0;
   for (const d of S.depts) {
     const cap = G.capacity(d), rows = Math.ceil(cap / 2);
@@ -197,7 +269,7 @@ function buildRooms(S) {
     sign.position.set(W / 2, 3.1, 0); g.add(sign);
     const desks = [];
     for (let i = 0; i < cap; i++) {
-      const desk = makeDesk();
+      const desk = makeDesk(has(S, 'monitor'));
       desk.position.set(1.4 + (i % 2) * 2.3, 0, 1.4 + Math.floor(i / 2) * 2.2);
       g.add(desk);
       desks.push({ desk, seat: new THREE.Vector3(x + desk.position.x, 0, desk.position.z + 0.75) });
@@ -210,6 +282,13 @@ function buildRooms(S) {
     const plant = makePlant(true); plant.position.set(W - 0.6, 0, D - 0.6); g.add(plant);
     const plant2 = makePlant(false); plant2.position.set(0.4, 0, D - 0.5); g.add(plant2);
     const light = new THREE.PointLight(0xffd9a0, 0, 10, 1.2); light.position.set(W / 2, 2.4, D / 2); g.add(light); roomLights.push(light);
+    // research unlocks show up as furniture
+    if (has(S, 'coffee')) box(0.5, 0.1, 0.42, glow(0xf2c14e, 1.1, 1.8), W - 0.5, 1.36, 1.4, g, false); // gold top = premium machine
+    if (has(S, 'plants')) for (const z of [1.2, D - 1.8]) { const pl = makePlant(false); pl.position.set(0.4, 0, z); g.add(pl); }
+    if (has(S, 'library')) { const sh = makeShelf(); sh.position.set(W - 2.5, 0, 0.3); g.add(sh); }
+    if (has(S, 'game')) { const ar = makeArcade(); ar.position.set(W - 0.55, 0, D - 1.7); ar.rotation.y = -Math.PI / 2; g.add(ar); }
+    if (has(S, 'robot')) { const rb = makeRobot(); rb.position.set(0.55, 0, 0.6); rb.rotation.y = Math.PI / 4; g.add(rb); bobbers.push(rb); }
+    if (d === S.depts[0] && S.trophies && S.trophies.length) { const tr = makeTrophies(S.trophies.length); tr.position.set(W / 2 + 2.1, 0, 0.15); g.add(tr); }
     // aisleX: walkway between the two desk columns (desks span x 0.7–2.1 and 3.0–4.4).
     rooms.set(d.id, {
       id: d.id, desks, sofaSeats, aisleX: x + 2.55, exit: new THREE.Vector3(x + 2.55, 0, D + 2.5),
@@ -219,25 +298,87 @@ function buildRooms(S) {
   }
   corridorZ = Math.max(...[...rooms.values()].map(r => r.D)) + 0.8;
   total = Math.max(8, x - 1.2);
-  // street, lamps, trees outside
-  box(total + 6, 0.06, 2.4, 0xc9c2b2, total / 2, -0.18, corridorZ + 0.6, world);
-  box(total + 6, 0.04, 3.2, 0x55585e, total / 2, -0.19, corridorZ + 3.4, world);
-  for (let lx = -1; lx <= total + 1; lx += 6) { const l = makeStreetLamp(); l.position.set(lx, 0, corridorZ + 1.7); world.add(l); }
+  buildTown(S);
+  const end = townX0 + G.MAX_SUBS * PLOT_W;
+  // street, lamps, trees outside (the street runs past the offices and the town)
+  box(end + 6, 0.06, 2.4, 0xc9c2b2, end / 2, -0.18, corridorZ + 0.6, world);
+  box(end + 6, 0.04, 3.2, 0x55585e, end / 2, -0.19, corridorZ + 3.4, world);
+  for (let i = 0; i < end / 3; i++) box(1.2, 0.02, 0.15, 0xf2efe8, i * 3, -0.16, corridorZ + 3.4, world, false); // lane marks
+  for (let lx = -1; lx <= end + 1; lx += 6) { const l = makeStreetLamp(); l.position.set(lx, 0, corridorZ + 1.7); world.add(l); }
   const rnd = seededRand(42);
-  for (let i = 0; i < Math.ceil(total / 2.5) + 6; i++) {
+  for (let i = 0; i < Math.ceil(end / 2.5) + 6; i++) {
     const t = makeTree(0.8 + rnd() * 0.6);
     const side = rnd();
-    if (side < 0.6) t.position.set(-3 + rnd() * (total + 6), 0, -2 - rnd() * 4);
-    else t.position.set(side < 0.8 ? -2 - rnd() * 3 : total + 2 + rnd() * 3, 0, rnd() * corridorZ);
+    if (side < 0.7) t.position.set(-3 + rnd() * (end + 6), 0, -2 - rnd() * 4);
+    else t.position.set(-2 - rnd() * 3, 0, rnd() * corridorZ);
     world.add(t);
   }
-  fitSize = total + corridorZ;
-  controls.target.set(total / 2, 0, corridorZ / 2); cam.position.set(total / 2 + 20, 20, corridorZ / 2 + 20);
-  fit();
-  const sc = sun.shadow.camera, ext = Math.max(20, total);
-  Object.assign(sc, { left: -ext, right: ext, top: ext, bottom: -ext, far: 120 }); sc.updateProjectionMatrix();
-  controls.update();
+  const sc = sun.shadow.camera, ext = Math.max(20, end * 0.7);
+  Object.assign(sc, { left: -ext, right: ext, top: ext, bottom: -ext, far: 160 }); sc.updateProjectionMatrix();
+  setView(view, !!first);
 }
+
+// ---------- town: subsidiary plots to the right of the offices, facing the street ----------
+const PLOT_W = 6.5;
+let townX0 = 12, plots = [];
+function buildTown(S) {
+  townX0 = total + 3; plots = [];
+  const z0 = 0.4, Dp = 5.6, front = z0 + Dp;
+  for (let i = 0; i < G.MAX_SUBS; i++) {
+    const cx = townX0 + i * PLOT_W + PLOT_W / 2;
+    const g = new THREE.Group(); g.position.set(cx, 0, z0 + Dp / 2); world.add(g);
+    box(PLOT_W - 0.4, 0.08, Dp, 0xd8d2c4, 0, -0.14, 0, g);
+    const sub = (S.subs || []).find(x => x.plot === i);
+    const plot = { id: 'plot' + i, i, cx, aisleX: cx, door: new THREE.Vector3(cx, 0, front + 0.5), center: new THREE.Vector3(cx, 0, z0 + Dp / 2), top: 2, sub, desks: null };
+    if (sub) {
+      const { g: b, top } = makeBuilding(sub.type, sub.level);
+      b.position.z = -0.6; g.add(b); plot.top = top + 1;
+      if (sub.type === 'fintech') b.traverse(o => { if (o.userData.spin) spinners.push(o); });
+      const def = G.SUBS[sub.type];
+      const ceo = sub.ceo != null ? (S.staff.find(e => e.id === sub.ceo) || {}).name : null;
+      const sign = label(`${def.icon} ${def.name} · Lv.${sub.level}${ceo ? ' · CEO ' + ceo : ' · ไม่มี CEO'}`, 'o3d-room');
+      sign.position.set(0, top + 1.3, 0); g.add(sign);
+      for (const [px, pz] of [[-2.6, 2.3], [2.6, 2.3]]) { const pl = makePlant(false); pl.position.set(px, 0, pz); g.add(pl); }
+    } else if (i <= (S.subs || []).length) {
+      const fs = makeForSale(); fs.position.set(0, 0, 1.5); g.add(fs);
+      const lab = label(G.hasResearch(S, 'holding') ? '🏷️ ที่ดินว่าง' : '🔒 วิจัย "ใบอนุญาตโฮลดิ้ง" ก่อน', 'o3d-name');
+      lab.position.set(0, 1.6, 1.5); g.add(lab);
+    }
+    plots.push(plot); rooms.set(plot.id, plot);
+  }
+}
+
+// ---------- camera views: office ↔ town ----------
+let view = 'office';
+const camGoal = new THREE.Vector3(), camOffset = new THREE.Vector3(20, 20, 20);
+let zoomGoal = 1;
+function setView(v, instant) {
+  view = v;
+  const owned = Math.max(3, plots.filter(p => p.sub).length + 1);
+  const cx = v === 'town' ? townX0 + owned * PLOT_W / 2 : total / 2;
+  fitSize = (v === 'town' ? owned * PLOT_W : total) + corridorZ;
+  camGoal.set(cx, 0, corridorZ / 2);
+  const a = host.clientWidth / Math.max(1, host.clientHeight);
+  zoomGoal = Math.max(controls.minZoom, Math.min(2.2, (12 * a) / (0.72 * fitSize + 2)));
+  if (instant) {
+    controls.target.copy(camGoal); cam.position.copy(camGoal).add(camOffset); cam.zoom = zoomGoal; cam.updateProjectionMatrix(); controls.update();
+  }
+  if (!instant) camMoving = 1.5;
+  viewBtns.forEach(b => b.classList.toggle("on", b.dataset.view === v));
+}
+const viewBar = document.createElement('div'); viewBar.className = 'o3d-views';
+viewBar.innerHTML = '<button data-view="office" class="on">🏢 ออฟฟิศ</button><button data-view="town">🏙️ เมือง</button>';
+host.appendChild(viewBar);
+const viewBtns = [...viewBar.querySelectorAll('button')];
+viewBar.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { window.SFX?.play('click'); setView(b.dataset.view); } });
+let camMoving = 0;
+function updateCamera(dt) {
+  const d = camGoal.clone().sub(controls.target);
+  if (d.lengthSq() > 1e-4) { const step = d.multiplyScalar(Math.min(1, dt * 4)); controls.target.add(step); cam.position.add(step); }
+  if (Math.abs(cam.zoom - zoomGoal) > 1e-3 && camMoving > 0) { cam.zoom += (zoomGoal - cam.zoom) * Math.min(1, dt * 4); cam.updateProjectionMatrix(); }
+  camMoving = Math.max(0, camMoving - dt);
+}
+const bobbers = [], spinners = [];
 
 // Route: step into own aisle → along aisle (via the front corridor if changing rooms) → into the target spot.
 function route(p, dest, toRoom) {
@@ -254,28 +395,54 @@ function route(p, dest, toRoom) {
 const people = new Map();
 function spawn(e, at) {
   const c = makeCharacter(e);
-  const name = label(e.name, 'o3d-name'); name.position.y = 2.15; c.root.add(name);
+  const name = label(e.name, 'o3d-name'); name.position.y = TOP_Y + 0.55; c.root.add(name);
   c.root.position.copy(at); scene.add(c.root);
   const p = { c, id: e.id, goal: at.clone(), path: [], roomId: null, home: null, task: null, emote: null, leaving: false };
   people.set(e.id, p);
   return p;
 }
 const bubbles = [];
+const BUBBLE_Y = TOP_Y + 0.85;
 function bubble(p, emoji, secs = 2.6, cls = 'o3d-bubble') {
-  const b = label(emoji, cls); b.position.y = 2.5; p.c.root.add(b);
-  bubbles.push({ b, until: simT + secs, born: simT, y0: 2.5 });
+  const b = label(emoji, cls); b.position.y = BUBBLE_Y; p.c.root.add(b);
+  bubbles.push({ b, until: simT + secs, born: simT, y0: BUBBLE_Y });
 }
-function floatAt(pos, text, cls, secs = 1.8) {
-  const b = label(text, cls); b.position.copy(pos); b.position.y = 2.8; scene.add(b);
-  bubbles.push({ b, until: simT + secs, born: simT, y0: 2.8 });
+// Small number that pops off a person (work points, LV UP).
+function floatOver(p, text, cls, secs = 1.3) {
+  const b = label(text, cls); b.position.set((Math.random() - 0.5) * 0.4, TOP_Y + 0.4, 0); p.c.root.add(b);
+  bubbles.push({ b, until: simT + secs, born: simT, y0: TOP_Y + 0.4, rise: 0.9 });
+}
+function floatAt(pos, text, cls, secs = 1.8, y = 2.8) {
+  const b = label(text, cls); b.position.copy(pos); b.position.y = y; scene.add(b);
+  bubbles.push({ b, until: simT + secs, born: simT, y0: y });
 }
 function setEmote(p, pose, secs, faceTo = null) { p.emote = { pose, until: simT + secs, faceTo }; }
 
+let lastDay = null;
 function sync(S) {
   if (!S) return;
-  const sig = S.depts.map(d => d.id + ':' + d.level).join(',');
+  // Rebuild the world when anything that changes the layout or props changes.
+  const sig = [
+    S.depts.map(d => d.id + ':' + d.level).join(','),
+    Object.keys(S.research || {}).sort().join(','),
+    (S.subs || []).map(x => `${x.id}:${x.type}:${x.level}:${x.ceo}:${x.plot}`).join(','),
+    (S.trophies || []).length,
+  ].join('|');
   let snap = false;
-  if (sig !== roomSig) { roomSig = sig; buildRooms(S); snap = true; }
+  if (sig !== roomSig) { const first = !roomSig; roomSig = sig; buildRooms(S, first); snap = first; }
+  // Kairosoft-style: every new day, little numbers pop off everyone who worked and every subsidiary.
+  if (lastDay !== null && S.day === lastDay + 1) {
+    let n = 0;
+    for (const e of S.staff) {
+      const p = people.get(e.id);
+      if (p && e.lastOut > 0 && e.dept != null && n++ < 24) floatOver(p, `+${e.lastOut}`, 'o3d-pt');
+    }
+    for (const sub of S.subs || []) {
+      const pl = plots[sub.plot];
+      if (pl && sub.lastProfit) floatAt(pl.center, `+฿${sub.lastProfit.toLocaleString()}`, 'o3d-coin', 1.6, pl.top);
+    }
+  }
+  lastDay = S.day;
   const alive = new Set();
   for (const d of S.depts) {
     const room = rooms.get(d.id); if (!room) continue;
@@ -300,6 +467,18 @@ function sync(S) {
       };
       if (snap) { p.task = null; p.path = []; p.c.root.position.copy(p.home.dest); p.goal.copy(p.home.dest); p.roomId = room.id; }
     });
+  }
+  // CEOs stand at the door of their subsidiary.
+  for (const sub of S.subs || []) {
+    if (sub.ceo == null) continue;
+    const e = S.staff.find(x => x.id === sub.ceo), pl = plots[sub.plot];
+    if (!e || !pl) continue;
+    alive.add(e.id);
+    let p = people.get(e.id);
+    if (!p) { p = spawn(e, pl.door); p.roomId = pl.id; }
+    p.leaving = false; setMood(p.c, e.mood);
+    p.home = { dest: pl.door.clone(), face: 0, pose: 'stand', roomId: pl.id, ceo: true };
+    if (snap) { p.task = null; p.path = []; p.c.root.position.copy(p.home.dest); p.goal.copy(p.home.dest); p.roomId = pl.id; }
   }
   for (const [id, p] of people) {
     if (alive.has(id) || p.leaving) continue;
@@ -359,6 +538,21 @@ function onLog(entry) {
   const emoji = (x.match(/\p{Extended_Pictographic}/u) || [''])[0];
   const who = (entry.who || []).map(id => people.get(id)).filter(Boolean);
   const room = entry.dept != null ? rooms.get(entry.dept) : null;
+  const S = state();
+  const plot = entry.sub != null && S ? plots[(S.subs.find(v => v.id === entry.sub) || {}).plot] : null;
+  if (/^⬆️/.test(x)) { for (const p of who) { floatOver(p, 'LV UP!', 'o3d-lvl', 1.6); setEmote(p, 'cheer', 1); } return; }
+  if (/^🎓/.test(x)) { for (const p of who) bubble(p, '🎓', 3); return; }
+  if (/^🎖️/.test(x)) { for (const p of who) { burst(p.c.root.position, 50); bubble(p, '🎖️', 3); setEmote(p, 'cheer', 2.5); } return; }
+  if (/^(🌟|👍) /.test(x) && room) { floatAt(room.center, x.startsWith('🌟') ? '🌟 COMBO!!' : '👍 COMBO!', 'o3d-combo', 2.6, 3.4); if (x.startsWith('🌟')) burst(room.center, 80); return; }
+  if (plot) {
+    burst(plot.center, /^(🏙️|🌟)/.test(x) ? 90 : 50);
+    if (/^🌟/.test(x)) floatAt(plot.center, '🌟 คอมโบธุรกิจ!', 'o3d-combo', 2.8, plot.top + 0.6);
+    for (const p of who) { bubble(p, '👔', 2.5); setEmote(p, 'cheer', 2); }
+    if (/^(🏙️|👔|🏗️)/.test(x)) setView('town');
+    return;
+  }
+  if (/^🔬/.test(x)) { for (const r of rooms.values()) if (r.desks) burst(r.center, 40); for (const p of people.values()) if (!p.leaving && !p.home?.ceo) bubble(p, '💡', 2); return; }
+  if (/งานประกาศรางวัล/.test(x)) { for (const r of rooms.values()) burst(r.center, 60); for (const p of people.values()) if (!p.leaving) { bubble(p, '🏆', 3); setEmote(p, 'cheer', 3); } return; }
   if (/^✅/.test(x)) {
     if (room) { burst(room.center, 70); floatAt(room.center, `+฿${(entry.amt || 0).toLocaleString()}`, 'o3d-coin big', 2.4); }
     for (const p of people.values()) if (!p.leaving && (!room || p.roomId === room.id)) { bubble(p, '🎉', 2); setEmote(p, 'cheer', 1.8); }
@@ -391,7 +585,7 @@ function lifeTick() {
   if (!list.length) return;
   const p = list[Math.floor(Math.random() * list.length)];
   const e = S.staff.find(x => x.id === p.id); if (!e) return;
-  const room = rooms.get(p.home.roomId); if (!room) return;
+  const room = rooms.get(p.home.roomId); if (!room || !room.desks) return; // CEOs (town) have no errands
   const mates = list.filter(o => o !== p && o.home.roomId === room.id);
   const friend = G.friends(S, e).map(f => people.get(f.id)).find(o => o && mates.includes(o));
   const rival = G.rivals(S, e).map(f => people.get(f.id)).find(o => o && o.home.roomId === room.id && !o.leaving);
@@ -498,11 +692,14 @@ function update(dt) {
   }
   for (let i = bubbles.length - 1; i >= 0; i--) {
     const bb = bubbles[i], age = t - bb.born;
-    bb.b.position.y = bb.y0 + age * 0.4;
+    bb.b.position.y = bb.y0 + age * (bb.rise || 0.4);
     bb.b.element.style.opacity = String(Math.max(0, Math.min(1, (bb.until - t) / 0.5, age / 0.15)));
     if (t >= bb.until) { bb.b.parent?.remove(bb.b); bb.b.element.remove(); bubbles.splice(i, 1); }
   }
   updateConfetti(dt);
+  updateCamera(dt);
+  for (const b of bobbers) b.position.y = Math.abs(Math.sin(t * 3 + b.position.x)) * 0.06;
+  for (const s of spinners) s.rotation.y = t * 1.5;
   updateSky(t);
 }
 function frame() {
