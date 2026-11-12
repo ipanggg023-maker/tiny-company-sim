@@ -3,4 +3,5 @@
 - Reply in English. Ask before starting any work (the user switches models first).
 - After a discussion, keep only important, reusable notes in .md files: `GAME_PLAN.md` (design + status), `docs/3D_METHOD.md` (how the 2.5D view is built).
 - For any 3D/2.5D visuals, follow `docs/3D_METHOD.md`: procedural low-poly Three.js, game logic stays DOM-free.
+- Live at https://ipanggg023-maker.github.io/tiny-company-sim/ (GitHub Pages from `main`). Deploying = commit + push, but ask first. Commit as ipanggg023-maker with the noreply email.
 - Run: `py -m http.server 8123 --directory D:\simulator` → http://localhost:8123. Balance check: `node tools/balance-sim.js 300 365 smart`.

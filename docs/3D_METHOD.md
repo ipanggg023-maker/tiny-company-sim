@@ -36,7 +36,25 @@ Reusable recipe for adding an isometric 3D view with code-built characters to a 
 - Map emoji in log text to pose + duration (💢 angry and face each other, 😴 sleep, ✅/🎉 everyone cheers).
 - Bubble = CSS2DObject emoji floating up and fading; time it with simulated time.
 
+## Atmosphere & juice
+- Post: `EffectComposer` → `RenderPass` → `UnrealBloomPass(strength, 0.5, threshold 0.82)` → `OutputPass`. Only things brighter than the threshold glow: make glowing parts `MeshBasicMaterial` with color × 2–3.5 at night.
+- Day/night: one phase value drives background color, hemi/sun intensity and color, sun position, PointLight per room (on at night), glow multipliers, window color, bloom strength.
+- Confetti: one `InstancedMesh` pool (240 planes) with velocity, gravity, drag and spin. Hide a dead particle by setting its scale to 0.
+- Money/feedback popups = CSS2D labels floating up. Screen shake = CSS keyframes on the container (also moves the labels).
+- Sounds: Web Audio oscillators and envelopes, no files. Rate-limit each sound (~70 ms).
+- "Life director": every ~1–2 s pick one idle person and give them a short task (dest, wait, pose, faceTo, bubble). Afterwards they return home automatically.
+
+## Gotcha: CSS2D label cleanup
+- `CSS2DObject` removes its own HTML only when it's removed directly. Removing a parent group (`world.clear()`, `scene.remove(root)`) leaves nested label divs on screen.
+- Always remove through `drop(obj)`, which first does `obj.traverse(o => o.isCSS2DObject && o.element.remove())`.
+
+## Deploy
+- Static files only, so use GitHub Pages from `main` root: `gh repo create <name> --public --source . --push`, then `gh api -X POST repos/<owner>/<name>/pages -f "source[branch]=main" -f "source[path]=/"`. Poll `pages/builds/latest` until it reports `built`.
+- Commit with `<user>@users.noreply.github.com` so the private email stays private.
+
 ## Testing (headless-friendly)
+- `advance()` must also call `labels.render()`: CSS2D elements only attach to the DOM during a render.
+- Hidden panes also freeze CSS transitions, so screenshots can look stale. Check DOM state rather than trusting the pixels.
 - Split `update(dt)` from `render()`. Expose `Office3D.advance(secs)` and `Office3D.debug()` (positions/targets).
 - Hidden browser panes pause `requestAnimationFrame`, so test movement with `advance()`, not by waiting.
 - Verify: no console errors, everyone reaches target, room change routes correctly, screenshot for the look.

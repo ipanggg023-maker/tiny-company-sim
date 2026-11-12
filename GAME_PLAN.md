@@ -13,6 +13,17 @@
 - `office3d.js` + `characters.js` — 2.5D isometric office (Three.js 0.170 via CDN). Method: `docs/3D_METHOD.md`.
 - `prototype.html` = old v0, can be deleted.
 
+## Live
+- Repo: github.com/ipanggg023-maker/tiny-company-sim (public). Play: https://ipanggg023-maker.github.io/tiny-company-sim/
+- GitHub Pages serves `main` root. Deploy = commit + `git push`; the site rebuilds in ~1 min.
+
+## "x100 cooler" pass (2026-11-12)
+- Title screen (company name, continue/new), header shows the company name, money bump animation, fades/pop-ins, sliding log entries.
+- `sfx.js`: Web Audio synth sounds mapped from log emoji + UI clicks; mute toggle (saved).
+- 3D: day/night cycle (150 s), bloom glow (lamps, street lights), room lights at night, checker floors, whiteboard/shelf/posters/rug, outdoor street, trees, lamps.
+- Life director: coffee runs, friends walk over to chat, rivals glare, low-mood naps, stretches.
+- Juice: confetti + "+฿" pops on delivered jobs/deposits, screen shake on fights/failures.
+
 ## 2.5D view (added 2026-11-12)
 - One room per department (desks = capacity, sofa, coffee machine, plant). Employees are procedural low-poly people, look seeded by id, accessories from traits, mood gem above head.
 - Working → typing at desk; rest → sofa; low mood → slumped; log events → emoji bubbles + poses (fight, sleep, cheer). Hire walks in, quit walks out.
